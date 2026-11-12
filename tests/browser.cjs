@@ -6,7 +6,7 @@ let checks=0;const ok=(condition,label)=>{assert.ok(condition,label);console.log
 (async()=>{
   const schemaOutput=path.join(root,'tests/.schema-test.js');
   await esbuild.build({entryPoints:[path.join(root,'tests/schema-entry.js')],outfile:schemaOutput,bundle:true,nodePaths:[path.join(root,'node_modules')],format:'iife',plugins:[{name:'non-editor-ui-stubs',setup(build){
-    build.onLoad({filter:/note-editor[\\/]src[\\/]core[\\/]utils\.js$/},()=>({contents:`export const encodeObject=x=>encodeURIComponent(JSON.stringify(x)); export const decodeObject=x=>JSON.parse(decodeURIComponent(x)); export const randomString=()=>"test"; export const formatCitationItem=()=>"citation";`,loader:'js'}));
+    build.onLoad({filter:/note-editor[\\/]src[\\/]core[\\/]utils\.js$/},()=>({contents:`export const isMac=()=>false; export const encodeObject=x=>encodeURIComponent(JSON.stringify(x)); export const decodeObject=x=>JSON.parse(decodeURIComponent(x)); export const randomString=()=>"test"; export const formatCitationItem=()=>"citation";`,loader:'js'}));
   }}]});
   const server=http.createServer((req,res)=>{const file=path.join(extension,decodeURIComponent(req.url.split('?')[0]==='/'?'/convert.html':req.url.split('?')[0]));if(!file.startsWith(extension+path.sep)){res.writeHead(403);return res.end();}try{const types={'.html':'text/html','.js':'application/javascript','.css':'text/css'};res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));}catch{res.writeHead(404);res.end();}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
@@ -45,6 +45,23 @@ $$
     const doc=await page.evaluate(()=>testEditor.state.doc.toJSON());const pasted=JSON.stringify(doc);
     ok((pasted.match(/math_inline/g)||[]).length===5&&(pasted.match(/math_display/g)||[]).length===2,'Ctrl+V into official Zotero schema yields five inline and two display formulas');
     await page.locator('#test-editor').evaluate(node=>node.remove());await page.locator('#selection-fixture').evaluate(node=>node.remove());
+    const layoutResult=await page.evaluate(async()=>{
+      const fixture=document.createElement('div');fixture.id='layout-fixture';
+      fixture.innerHTML='<ol start="4"><li><p>前文 </p><ul><li><p>嵌套内容</p><p><br></p></li></ul></li></ol>';
+      const paragraph=fixture.querySelector('p'),formula=document.createElement('div');
+      formula.style.display='inline-block';formula.innerHTML='<span class="katex"><annotation encoding="application/x-tex">x_i</annotation></span>';
+      paragraph.append(formula,' 后文。');document.body.append(fixture);
+      const range=document.createRange();range.selectNodeContents(fixture);getSelection().removeAllRanges();getSelection().addRange(range);
+      const result=ZoteroPaste.captureSelection();await ZoteroPaste.writeClipboard(result);return result;
+    });
+    ok(layoutResult.inline===1&&!layoutResult.html.includes('<p><br>'),'copy removes blank list paragraphs while retaining inline math');
+    await page.evaluate(()=>makeZoteroTestEditor());await page.keyboard.press('Control+V');
+    const layoutDoc=await page.evaluate(()=>testEditor.state.doc.toJSON());
+    const ordered=layoutDoc.content.find(node=>node.type==='orderedList');
+    ok(ordered?.attrs.order===4&&ordered.content[0].content[1].type==='bulletList','actual clipboard paste preserves mixed-list types and numbering');
+    ok(ordered.content[0].content[0].content.map(node=>node.type).join(',')==='text,math_inline,text','actual Zotero paste plugin keeps prose and inline formula in one paragraph');
+    ok(ordered.content[0].content[1].content[0].content.length===1,'actual clipboard paste introduces no empty nested-list paragraphs');
+    await page.locator('#test-editor').evaluate(node=>node.remove());await page.locator('#layout-fixture').evaluate(node=>node.remove());
     await page.screenshot({path:path.join(root,'tests/preview.png'),fullPage:true});
     ok(errors.length===0,'converter UI has no JavaScript errors');
     console.log(`\n${checks} checks passed. Official Zotero schema commit: 7439a18414ffa6e90918283da9e4dbd35fce1a97.`);

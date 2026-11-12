@@ -2,6 +2,7 @@ node_modules/
 research/
 versions/
 releases/
+local-backups/
 tests/.schema-test.js
 tests/preview.png
 *.log

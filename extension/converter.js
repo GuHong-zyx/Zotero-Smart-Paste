@@ -20,6 +20,7 @@ var ZoteroPaste = (() => {
   // src/converter.js
   var converter_exports = {};
   __export(converter_exports, {
+    captureElement: () => captureElement,
     captureSelection: () => captureSelection,
     convertHTML: () => convertHTML,
     convertMarkdown: () => convertMarkdown,
@@ -5462,6 +5463,68 @@ var ZoteroPaste = (() => {
   };
   var lib_default = MarkdownIt;
 
+  // src/layout.js
+  var layoutTags = /^(DIV|SECTION|ARTICLE)$/;
+  var inlineParents = "p,h1,h2,h3,h4,h5,h6,strong,em,u,s,a,code";
+  var semanticBlocks = "p,h1,h2,h3,h4,h5,h6,ul,ol,li,table,blockquote,pre:not(.math)";
+  function cloneClipboardShell(element) {
+    const clone = element.cloneNode(false);
+    const view = element.ownerDocument.defaultView;
+    if (layoutTags.test(element.tagName) && view && /^(inline|inline-block|contents)$/.test(view.getComputedStyle(element).display)) {
+      clone.setAttribute("data-zp-inline-layout", "1");
+    }
+    return clone;
+  }
+  function cloneClipboardContents(range) {
+    const sourceRoot = range.commonAncestorContainer;
+    const cloneRoot = sourceRoot.cloneNode(true);
+    const owner = sourceRoot.ownerDocument;
+    const sourceWalker = owner.createTreeWalker(sourceRoot, 4294967295);
+    const cloneWalker = owner.createTreeWalker(cloneRoot, 4294967295);
+    let sourceNode = sourceRoot, cloneNode = cloneRoot, startNode, endNode;
+    while (sourceNode) {
+      if (sourceNode === range.startContainer) startNode = cloneNode;
+      if (sourceNode === range.endContainer) endNode = cloneNode;
+      if (sourceNode.nodeType === 1 && layoutTags.test(sourceNode.tagName)) {
+        const shell = cloneClipboardShell(sourceNode);
+        if (shell.hasAttribute("data-zp-inline-layout")) cloneNode.setAttribute("data-zp-inline-layout", "1");
+      }
+      sourceNode = sourceWalker.nextNode();
+      cloneNode = cloneWalker.nextNode();
+    }
+    const copiedRange = owner.createRange();
+    copiedRange.setStart(startNode, range.startOffset);
+    copiedRange.setEnd(endNode, range.endOffset);
+    return copiedRange.cloneContents();
+  }
+  function prepareClipboardLayout(root) {
+    for (const container of [...root.querySelectorAll("div,section,article")].reverse()) {
+      const inline2 = container.hasAttribute("data-zp-inline-layout") || /^(inline|inline-block|contents)$/.test(container.style.display);
+      const inParagraph = container.parentElement?.closest(inlineParents);
+      if (!inline2 && !(inParagraph && !container.querySelector(semanticBlocks))) continue;
+      if (container.querySelector(semanticBlocks) && !container.matches(".katex-display,.katex,[data-tex],[data-latex]")) {
+        container.replaceWith(...container.childNodes);
+        continue;
+      }
+      const replacement = container.ownerDocument.createElement("span");
+      for (const attribute2 of container.attributes) replacement.setAttribute(attribute2.name, attribute2.value);
+      replacement.append(...container.childNodes);
+      container.replaceWith(replacement);
+    }
+  }
+  function compactClipboardBlocks(root) {
+    for (const paragraph2 of [...root.querySelectorAll("p,div")].reverse()) {
+      if (paragraph2.closest("pre,code")) continue;
+      if (!paragraph2.textContent.replace(/[\s\u200b-\u200d\ufeff]/g, "") && !paragraph2.querySelector("span.math,pre.math,table,hr")) paragraph2.remove();
+    }
+    const block2 = (node) => node?.nodeType === 1 && /^(P|DIV|H[1-6]|UL|OL|LI|BLOCKQUOTE|TABLE|THEAD|TBODY|TFOOT|TR|TD|TH|PRE|HR)$/.test(node.tagName);
+    for (const container of [root, ...root.querySelectorAll("div,ul,ol,li,blockquote,table,thead,tbody,tfoot,tr,td,th")]) {
+      for (const child of [...container.childNodes]) {
+        if (child.nodeType === 3 && !child.textContent.trim() && (block2(child.previousSibling) || block2(child.nextSibling))) child.remove();
+      }
+    }
+  }
+
   // src/converter.js
   var esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   var escaped = (s, p) => {
@@ -5678,10 +5741,20 @@ var ZoteroPaste = (() => {
     const ctx = { warnings: /* @__PURE__ */ new Set(), base: base2 };
     for (const node of source.body.childNodes) root.append(cleanNode(node, doc, ctx));
     liftDisplay(root);
+    compactClipboardBlocks(root);
     const inline2 = root.querySelectorAll("span.math").length, display = root.querySelectorAll("pre.math").length;
     return { html: root.innerHTML, text: toMarkdown(root).replace(/\n{3,}/g, "\n\n").trim(), inline: inline2, display, warnings: [...ctx.warnings] };
   }
   var convertMarkdown = (input) => convertHTML(markdownHTML(input));
+  function captureElement(element) {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const captured = document.createElement("div"), wrapper = cloneClipboardShell(element);
+    wrapper.append(cloneClipboardContents(range));
+    captured.append(wrapper);
+    prepareClipboardLayout(captured);
+    return convertHTML(captured.innerHTML, { base: location.href });
+  }
   function mathRoot(node) {
     let el = node.nodeType === 1 ? node : node.parentElement;
     const nearest = el?.closest(formulaSelector);
@@ -5698,14 +5771,14 @@ var ZoteroPaste = (() => {
       if (end) range.setEndAfter(end);
       const ancestor = range.commonAncestorContainer;
       if (ancestor.nodeType === 1 && !/^(HTML|BODY)$/.test(ancestor.tagName)) {
-        let wrapper = ancestor.cloneNode(false);
-        wrapper.append(range.cloneContents());
+        let wrapper = cloneClipboardShell(ancestor);
+        wrapper.append(cloneClipboardContents(range));
         let original = ancestor;
         const list2 = ancestor.closest("ol,ul");
         if (list2) {
           while (original !== list2) {
             original = original.parentElement;
-            const parent = original.cloneNode(false);
+            const parent = cloneClipboardShell(original);
             parent.append(wrapper);
             wrapper = parent;
           }
@@ -5716,16 +5789,16 @@ var ZoteroPaste = (() => {
         }
         root.append(wrapper);
       } else {
-        const fragment = range.cloneContents();
+        const fragment = cloneClipboardContents(range);
         if (ancestor.nodeType === 3 && ancestor.parentElement && !/^(HTML|BODY)$/.test(ancestor.parentElement.tagName)) {
-          let original = ancestor.parentElement, wrapper = original.cloneNode(false);
+          let original = ancestor.parentElement, wrapper = cloneClipboardShell(original);
           wrapper.append(fragment);
           const list2 = original.closest("ol,ul");
           if (list2) {
             const first = original.closest("li");
             while (original !== list2) {
               original = original.parentElement;
-              const parent = original.cloneNode(false);
+              const parent = cloneClipboardShell(original);
               parent.append(wrapper);
               wrapper = parent;
             }
@@ -5735,6 +5808,7 @@ var ZoteroPaste = (() => {
         } else root.append(fragment);
       }
     }
+    prepareClipboardLayout(root);
     return convertHTML(root.innerHTML, { base: location.href });
   }
   async function writeClipboard(result) {
@@ -5818,10 +5892,10 @@ var ZoteroPaste = (() => {
       if (!current) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      const html = current.outerHTML;
+      const answer = current;
       cancel();
       try {
-        const result = convertHTML(html, { base: location.href });
+        const result = captureElement(answer);
         await writeClipboard(result);
         toast(`\u5DF2\u590D\u5236\uFF1A${result.inline} \u4E2A\u884C\u5185\u516C\u5F0F\uFF0C${result.display} \u4E2A\u72EC\u7ACB\u516C\u5F0F\u3002
 \u5230 Zotero \u7B14\u8BB0\u6309 Ctrl+V\u3002` + (result.warnings.length ? "\n" + result.warnings.join("\n") : ""));

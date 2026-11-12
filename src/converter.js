@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it';
+import {cloneClipboardShell,cloneClipboardContents,prepareClipboardLayout,compactClipboardBlocks} from './layout.js';
 
 // All output is semantic HTML understood by Zotero's public note schema.
 // No rendered KaTeX glyphs, scripts, images, or page styles enter the clipboard.
@@ -171,10 +172,19 @@ export function convertHTML(html,{base}={}) {
   const ctx={warnings:new Set(),base};
   for(const node of source.body.childNodes) root.append(cleanNode(node,doc,ctx));
   liftDisplay(root);
+  compactClipboardBlocks(root);
   const inline=root.querySelectorAll('span.math').length,display=root.querySelectorAll('pre.math').length;
   return {html:root.innerHTML,text:toMarkdown(root).replace(/\n{3,}/g,'\n\n').trim(),inline,display,warnings:[...ctx.warnings]};
 }
 export const convertMarkdown = input => convertHTML(markdownHTML(input));
+/** 复制完整元素的内容，按原网页布局整理后返回 Zotero 富文本。 */
+export function captureElement(element) {
+  const range=document.createRange();range.selectNodeContents(element);
+  const captured=document.createElement('div'),wrapper=cloneClipboardShell(element);
+  wrapper.append(cloneClipboardContents(range));captured.append(wrapper);
+  prepareClipboardLayout(captured);
+  return convertHTML(captured.innerHTML,{base:location.href});
+}
 function mathRoot(node) {
   let el=node.nodeType===1?node:node.parentElement; const nearest=el?.closest(formulaSelector);
   if(!nearest) return null;
@@ -189,11 +199,11 @@ export function captureSelection(selection=window.getSelection()) {
     if(start) range.setStartBefore(start); if(end) range.setEndAfter(end);
     const ancestor=range.commonAncestorContainer;
     if(ancestor.nodeType===1 && !/^(HTML|BODY)$/.test(ancestor.tagName)) {
-      let wrapper=ancestor.cloneNode(false); wrapper.append(range.cloneContents());
+      let wrapper=cloneClipboardShell(ancestor); wrapper.append(cloneClipboardContents(range));
       let original=ancestor;
       const list=ancestor.closest('ol,ul');
       if(list) {
-        while(original!==list) {original=original.parentElement;const parent=original.cloneNode(false);parent.append(wrapper);wrapper=parent;}
+        while(original!==list) {original=original.parentElement;const parent=cloneClipboardShell(original);parent.append(wrapper);wrapper=parent;}
         if(list.tagName==='OL') {
           const first=[...list.children].find(child=>range.intersectsNode(child));
           if(first) wrapper.setAttribute('start',String(Number(list.getAttribute('start')||1)+[...list.children].indexOf(first)));
@@ -201,16 +211,17 @@ export function captureSelection(selection=window.getSelection()) {
       }
       root.append(wrapper);
     } else {
-      const fragment=range.cloneContents();
+      const fragment=cloneClipboardContents(range);
       // A text-only common ancestor still inherits its surrounding inline marks.
       if(ancestor.nodeType===3 && ancestor.parentElement && !/^(HTML|BODY)$/.test(ancestor.parentElement.tagName)) {
-        let original=ancestor.parentElement,wrapper=original.cloneNode(false);wrapper.append(fragment);
+        let original=ancestor.parentElement,wrapper=cloneClipboardShell(original);wrapper.append(fragment);
         const list=original.closest('ol,ul');
-        if(list) {const first=original.closest('li');while(original!==list){original=original.parentElement;const parent=original.cloneNode(false);parent.append(wrapper);wrapper=parent;}if(list.tagName==='OL') wrapper.setAttribute('start',String(Number(list.getAttribute('start')||1)+[...list.children].indexOf(first)));}
+        if(list) {const first=original.closest('li');while(original!==list){original=original.parentElement;const parent=cloneClipboardShell(original);parent.append(wrapper);wrapper=parent;}if(list.tagName==='OL') wrapper.setAttribute('start',String(Number(list.getAttribute('start')||1)+[...list.children].indexOf(first)));}
         root.append(wrapper);
       } else root.append(fragment);
     }
   }
+  prepareClipboardLayout(root);
   return convertHTML(root.innerHTML,{base:location.href});
 }
 export async function writeClipboard(result) {
@@ -249,7 +260,7 @@ export function pickAnswer() {
   }
   function move(event){current=candidate(event.target); if(!current){outline.style.display='none';return;}const r=current.getBoundingClientRect();Object.assign(outline.style,{display:'block',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});}
   function cancel(){document.removeEventListener('pointermove',move,true);document.removeEventListener('click',click,true);document.removeEventListener('keydown',key,true);outline.remove();delete window.__zpCancelPicker;}
-  async function click(event){if(!current)return;event.preventDefault();event.stopImmediatePropagation();const html=current.outerHTML;cancel();try{const result=convertHTML(html,{base:location.href});await writeClipboard(result);toast(`已复制：${result.inline} 个行内公式，${result.display} 个独立公式。\n到 Zotero 笔记按 Ctrl+V。`+(result.warnings.length?'\n'+result.warnings.join('\n'):''));}catch(error){toast(error.message,true);}}
+  async function click(event){if(!current)return;event.preventDefault();event.stopImmediatePropagation();const answer=current;cancel();try{const result=captureElement(answer);await writeClipboard(result);toast(`已复制：${result.inline} 个行内公式，${result.display} 个独立公式。\n到 Zotero 笔记按 Ctrl+V。`+(result.warnings.length?'\n'+result.warnings.join('\n'):''));}catch(error){toast(error.message,true);}}
   function key(event){if(event.key==='Escape'){cancel();toast('已取消。');}}
   document.addEventListener('pointermove',move,true);document.addEventListener('click',click,true);document.addEventListener('keydown',key,true);window.__zpCancelPicker=cancel;
 }

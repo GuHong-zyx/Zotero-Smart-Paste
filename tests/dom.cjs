@@ -4,7 +4,7 @@ const root=path.dirname(__dirname);let checks=0;
 const ok=(condition,label)=>{assert.ok(condition,label);console.log('PASS '+label);checks++;};
 (async()=>{
   const schemaOutput=path.join(root,'tests/.schema-test.js');
-  await esbuild.build({entryPoints:[path.join(root,'tests/schema-entry.js')],outfile:schemaOutput,bundle:true,nodePaths:[path.join(root,'node_modules')],format:'iife',plugins:[{name:'non-editor-ui-stubs',setup(build){build.onLoad({filter:/note-editor[\\/]src[\\/]core[\\/]utils\.js$/},()=>({contents:`export const encodeObject=x=>encodeURIComponent(JSON.stringify(x)); export const decodeObject=x=>JSON.parse(decodeURIComponent(x)); export const randomString=()=>"test"; export const formatCitationItem=()=>"citation";`,loader:'js'}));}}]});
+  await esbuild.build({entryPoints:[path.join(root,'tests/schema-entry.js')],outfile:schemaOutput,bundle:true,nodePaths:[path.join(root,'node_modules')],format:'iife',plugins:[{name:'non-editor-ui-stubs',setup(build){build.onLoad({filter:/note-editor[\\/]src[\\/]core[\\/]utils\.js$/},()=>({contents:`export const isMac=()=>false; export const encodeObject=x=>encodeURIComponent(JSON.stringify(x)); export const decodeObject=x=>JSON.parse(decodeURIComponent(x)); export const randomString=()=>"test"; export const formatCitationItem=()=>"citation";`,loader:'js'}));}}]});
   const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'outside-only',url:'https://aistudio.google.com/prompts/test',pretendToBeVisual:true}),w=dom.window;
   w.eval(fs.readFileSync(path.join(root,'extension/converter.js'),'utf8'));w.eval(fs.readFileSync(schemaOutput,'utf8'));
   const convert=w.ZoteroPaste.convertMarkdown,html=w.ZoteroPaste.convertHTML;
@@ -59,6 +59,7 @@ $$
   ok((demoFlat.match(/math_inline/g)||[]).length===5&&(demoFlat.match(/math_display/g)||[]).length===2,'example survives official schema with correct formula types');
   const pasted=new v.Event('paste',{bubbles:true,cancelable:true});Object.defineProperty(pasted,'clipboardData',{value:{getData:type=>type==='text/html'?'<p>粘贴 <span class="math">$z^2$</span></p>':'粘贴 z2'}});source.select();source.dispatchEvent(pasted);
   ok(v.document.querySelectorAll('.katex').length===1&&source.value.includes('$z^2$'),'rich paste retains original LaTeX source');
+  checks+=require('./layout.cjs')(w);
   console.log(`\n${checks} DOM/schema checks passed. Browser permissions and live AI Studio/Zotero desktop are not tested by this suite.`);
   dom.window.close();ui.window.close();
 })().catch(error=>{console.error(error);process.exitCode=1;});

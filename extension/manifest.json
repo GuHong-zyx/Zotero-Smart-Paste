@@ -1,12 +1,31 @@
 {
   "manifest_version": 3,
   "name": "Zotero Smart Paste · 公式复制",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "将 AI Studio 中的选区或回答复制为 Zotero 可编辑笔记，保留行内和独立公式。",
   "minimum_chrome_version": "109",
-  "permissions": ["activeTab", "scripting", "clipboardWrite", "contextMenus"],
-  "background": {"service_worker": "background.js"},
-  "action": {"default_popup": "popup.html", "default_title": "复制到 Zotero"},
-  "commands": {"copy-for-zotero": {"suggested_key": {"default": "Ctrl+Shift+Z"}, "description": "复制选区到 Zotero"}},
-  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'"}
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "contextMenus"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "复制到 Zotero"
+  },
+  "commands": {
+    "copy-for-zotero": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Z"
+      },
+      "description": "复制选区到 Zotero"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
 }
