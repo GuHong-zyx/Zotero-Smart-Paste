@@ -48,8 +48,8 @@ $$
     const layoutResult=await page.evaluate(async()=>{
       const fixture=document.createElement('div');fixture.id='layout-fixture';
       fixture.innerHTML='<ol start="4"><li><p>前文 </p><ul><li><p>嵌套内容</p><p><br></p></li></ul></li></ol>';
-      const paragraph=fixture.querySelector('p'),formula=document.createElement('div');
-      formula.style.display='inline-block';formula.innerHTML='<span class="katex"><annotation encoding="application/x-tex">x_i</annotation></span>';
+      const paragraph=fixture.querySelector('p'),formula=document.createElement('ms-katex');
+      formula.className='inline';formula.innerHTML='<pre>  <code class="rendered"><span class="katex"><annotation encoding="application/x-tex">x_i</annotation></span></code>\n</pre>';
       paragraph.append(formula,' 后文。');document.body.append(fixture);
       const range=document.createRange();range.selectNodeContents(fixture);getSelection().removeAllRanges();getSelection().addRange(range);
       const result=ZoteroPaste.captureSelection();await ZoteroPaste.writeClipboard(result);return result;

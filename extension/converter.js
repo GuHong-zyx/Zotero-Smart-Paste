@@ -5596,14 +5596,14 @@ var ZoteroPaste = (() => {
 `;
   };
   var markdownHTML = (input) => md.render(String(input));
-  var formulaSelector = '.katex-display,.katex,mjx-container,math,math-inline,math-display,span.math,pre.math,.math-inline,.math-block,[data-tex],[data-latex],[data-formula],script[type^="math/tex"]';
+  var formulaSelector = 'ms-katex,.katex-display,.katex,mjx-container,math,math-inline,math-display,span.math,pre.math,.math-inline,.math-block,[data-tex],[data-latex],[data-formula],script[type^="math/tex"]';
   var drop = /* @__PURE__ */ new Set(["SCRIPT", "STYLE", "LINK", "META", "NOSCRIPT", "TEMPLATE", "IFRAME", "OBJECT", "EMBED", "SVG", "CANVAS", "BUTTON", "INPUT", "TEXTAREA", "SELECT", "NAV", "ASIDE"]);
   var allowed = /* @__PURE__ */ new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "STRONG", "EM", "U", "S", "SUB", "SUP", "CODE", "PRE", "UL", "OL", "LI", "BLOCKQUOTE", "TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TD", "TH", "A", "BR", "HR"]);
   var blocks = /* @__PURE__ */ new Set(["P", "DIV", "SECTION", "ARTICLE", "H1", "H2", "H3", "H4", "H5", "H6", "UL", "OL", "LI", "BLOCKQUOTE", "TABLE", "TR", "PRE"]);
   function getMath(node) {
     if (node.tagName === "ZP-MATH") return { tex: normalizeTex(node.getAttribute("data-tex") || ""), display: node.dataset.display === "1" };
     if (!node.matches(formulaSelector)) return null;
-    const display = node.matches(".katex-display,pre.math,.math-block,math-display") || node.getAttribute("display") === "block" || node.getAttribute("data-display") === "true" || node.getAttribute("data-display-mode") === "true" || /mode\s*=\s*display/.test(node.getAttribute("type") || "") || node.classList.contains("MathJax_Display") || node.tagName === "MJX-CONTAINER" && node.getAttribute("display") === "true";
+    const display = node.matches(".katex-display,pre.math,.math-block,math-display") || node.getAttribute("display") === "block" || node.tagName === "MS-KATEX" && !node.classList.contains("inline") || node.getAttribute("data-display") === "true" || node.getAttribute("data-display-mode") === "true" || /mode\s*=\s*display/.test(node.getAttribute("type") || "") || node.classList.contains("MathJax_Display") || node.tagName === "MJX-CONTAINER" && node.getAttribute("display") === "true";
     const annotation = node.querySelector('annotation[encoding="application/x-tex"],annotation[encoding="application/x-latex"]');
     let tex = annotation?.textContent || node.getAttribute("data-tex") || node.getAttribute("data-latex") || node.getAttribute("data-formula");
     if (!tex && node.matches('span.math,pre.math,math-inline,math-display,.math-inline,.math-block,script[type^="math/tex"]')) tex = node.textContent;
@@ -5734,16 +5734,19 @@ var ZoteroPaste = (() => {
     if (tag === "TR") return "\n| " + body + "\n";
     return blocks.has(tag) ? "\n\n" + body + "\n\n" : body;
   }
-  function convertHTML(html, { base: base2 } = {}) {
-    const source = new DOMParser().parseFromString(String(html), "text/html");
+  function convertDOM(source, { base: base2 } = {}) {
     const doc = document.implementation.createHTMLDocument("");
     const root = doc.createElement("div");
     const ctx = { warnings: /* @__PURE__ */ new Set(), base: base2 };
-    for (const node of source.body.childNodes) root.append(cleanNode(node, doc, ctx));
+    for (const node of source.childNodes) root.append(cleanNode(node, doc, ctx));
     liftDisplay(root);
     compactClipboardBlocks(root);
     const inline2 = root.querySelectorAll("span.math").length, display = root.querySelectorAll("pre.math").length;
     return { html: root.innerHTML, text: toMarkdown(root).replace(/\n{3,}/g, "\n\n").trim(), inline: inline2, display, warnings: [...ctx.warnings] };
+  }
+  function convertHTML(html, options = {}) {
+    const source = new DOMParser().parseFromString(String(html), "text/html");
+    return convertDOM(source.body, options);
   }
   var convertMarkdown = (input) => convertHTML(markdownHTML(input));
   function captureElement(element) {
@@ -5753,13 +5756,13 @@ var ZoteroPaste = (() => {
     wrapper.append(cloneClipboardContents(range));
     captured.append(wrapper);
     prepareClipboardLayout(captured);
-    return convertHTML(captured.innerHTML, { base: location.href });
+    return convertDOM(captured, { base: location.href });
   }
   function mathRoot(node) {
     let el = node.nodeType === 1 ? node : node.parentElement;
     const nearest = el?.closest(formulaSelector);
     if (!nearest) return null;
-    return nearest.closest(".katex-display") || nearest.closest("mjx-container") || nearest;
+    return nearest.closest("ms-katex") || nearest.closest(".katex-display") || nearest.closest("mjx-container") || nearest;
   }
   function captureSelection(selection = window.getSelection()) {
     if (!selection?.rangeCount || selection.isCollapsed) return null;
@@ -5809,7 +5812,7 @@ var ZoteroPaste = (() => {
       }
     }
     prepareClipboardLayout(root);
-    return convertHTML(root.innerHTML, { base: location.href });
+    return convertDOM(root, { base: location.href });
   }
   async function writeClipboard(result) {
     if (!result?.text?.trim()) throw new Error("\u6CA1\u6709\u53EF\u590D\u5236\u7684\u6587\u5B57\u3002\u8BF7\u5148\u9009\u4E2D\u56DE\u7B54\u4E2D\u7684\u6587\u5B57\u3002");

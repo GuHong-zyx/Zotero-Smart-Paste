@@ -58,7 +58,7 @@ md.renderer.rules.fence=(tokens,i,options,env,self)=>{
 };
 export const markdownHTML = input => md.render(String(input));
 
-const formulaSelector='.katex-display,.katex,mjx-container,math,math-inline,math-display,span.math,pre.math,.math-inline,.math-block,[data-tex],[data-latex],[data-formula],script[type^="math/tex"]';
+const formulaSelector='ms-katex,.katex-display,.katex,mjx-container,math,math-inline,math-display,span.math,pre.math,.math-inline,.math-block,[data-tex],[data-latex],[data-formula],script[type^="math/tex"]';
 const drop=new Set(['SCRIPT','STYLE','LINK','META','NOSCRIPT','TEMPLATE','IFRAME','OBJECT','EMBED','SVG','CANVAS','BUTTON','INPUT','TEXTAREA','SELECT','NAV','ASIDE']);
 const allowed=new Set(['P','H1','H2','H3','H4','H5','H6','STRONG','EM','U','S','SUB','SUP','CODE','PRE','UL','OL','LI','BLOCKQUOTE','TABLE','THEAD','TBODY','TFOOT','TR','TD','TH','A','BR','HR']);
 const blocks=new Set(['P','DIV','SECTION','ARTICLE','H1','H2','H3','H4','H5','H6','UL','OL','LI','BLOCKQUOTE','TABLE','TR','PRE']);
@@ -66,6 +66,7 @@ function getMath(node) {
   if(node.tagName==='ZP-MATH') return {tex:normalizeTex(node.getAttribute('data-tex')||''),display:node.dataset.display==='1'};
   if(!node.matches(formulaSelector)) return null;
   const display=node.matches('.katex-display,pre.math,.math-block,math-display') || node.getAttribute('display')==='block'
+    || node.tagName==='MS-KATEX' && !node.classList.contains('inline')
     || node.getAttribute('data-display')==='true' || node.getAttribute('data-display-mode')==='true'
     || /mode\s*=\s*display/.test(node.getAttribute('type')||'') || node.classList.contains('MathJax_Display')
     || node.tagName==='MJX-CONTAINER' && node.getAttribute('display')==='true';
@@ -166,15 +167,19 @@ function toMarkdown(node) {
   if(tag==='TD'||tag==='TH') return body+' | '; if(tag==='TR') return '\n| '+body+'\n';
   return blocks.has(tag)?'\n\n'+body+'\n\n':body;
 }
-export function convertHTML(html,{base}={}) {
-  const source=new DOMParser().parseFromString(String(html),'text/html');
+/** 直接清理节点树，避免重新解析网页字符串时提前拆开含公式的段落。 */
+function convertDOM(source,{base}={}) {
   const doc=document.implementation.createHTMLDocument(''); const root=doc.createElement('div');
   const ctx={warnings:new Set(),base};
-  for(const node of source.body.childNodes) root.append(cleanNode(node,doc,ctx));
+  for(const node of source.childNodes) root.append(cleanNode(node,doc,ctx));
   liftDisplay(root);
   compactClipboardBlocks(root);
   const inline=root.querySelectorAll('span.math').length,display=root.querySelectorAll('pre.math').length;
   return {html:root.innerHTML,text:toMarkdown(root).replace(/\n{3,}/g,'\n\n').trim(),inline,display,warnings:[...ctx.warnings]};
+}
+export function convertHTML(html,options={}) {
+  const source=new DOMParser().parseFromString(String(html),'text/html');
+  return convertDOM(source.body,options);
 }
 export const convertMarkdown = input => convertHTML(markdownHTML(input));
 /** 复制完整元素的内容，按原网页布局整理后返回 Zotero 富文本。 */
@@ -183,12 +188,12 @@ export function captureElement(element) {
   const captured=document.createElement('div'),wrapper=cloneClipboardShell(element);
   wrapper.append(cloneClipboardContents(range));captured.append(wrapper);
   prepareClipboardLayout(captured);
-  return convertHTML(captured.innerHTML,{base:location.href});
+  return convertDOM(captured,{base:location.href});
 }
 function mathRoot(node) {
   let el=node.nodeType===1?node:node.parentElement; const nearest=el?.closest(formulaSelector);
   if(!nearest) return null;
-  return nearest.closest('.katex-display') || nearest.closest('mjx-container') || nearest;
+  return nearest.closest('ms-katex') || nearest.closest('.katex-display') || nearest.closest('mjx-container') || nearest;
 }
 export function captureSelection(selection=window.getSelection()) {
   if(!selection?.rangeCount || selection.isCollapsed) return null;
@@ -222,7 +227,7 @@ export function captureSelection(selection=window.getSelection()) {
     }
   }
   prepareClipboardLayout(root);
-  return convertHTML(root.innerHTML,{base:location.href});
+  return convertDOM(root,{base:location.href});
 }
 export async function writeClipboard(result) {
   if(!result?.text?.trim()) throw new Error('没有可复制的文字。请先选中回答中的文字。');

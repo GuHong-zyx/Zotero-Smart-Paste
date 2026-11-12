@@ -60,6 +60,7 @@ $$
   const pasted=new v.Event('paste',{bubbles:true,cancelable:true});Object.defineProperty(pasted,'clipboardData',{value:{getData:type=>type==='text/html'?'<p>粘贴 <span class="math">$z^2$</span></p>':'粘贴 z2'}});source.select();source.dispatchEvent(pasted);
   ok(v.document.querySelectorAll('.katex').length===1&&source.value.includes('$z^2$'),'rich paste retains original LaTeX source');
   checks+=require('./layout.cjs')(w);
+  checks+=require('./aistudio.cjs')(w);
   console.log(`\n${checks} DOM/schema checks passed. Browser permissions and live AI Studio/Zotero desktop are not tested by this suite.`);
   dom.window.close();ui.window.close();
 })().catch(error=>{console.error(error);process.exitCode=1;});

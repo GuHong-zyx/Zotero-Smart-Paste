@@ -2,11 +2,11 @@
 
 将 AI Studio 中的选中文字或单条回答复制为 Zotero 笔记，保留可编辑公式、标题、列表、表格和代码。转换在本地完成，无需 API 密钥。
 
-当前版本：**v1.0.2**。本项目借助 AI 开发和整理发行说明，采用 MIT 许可证。
+当前版本：**v1.0.3**。本项目借助 AI 开发和整理发行说明，采用 MIT 许可证。
 
 ## 下载安装
 
-1. 前往[发行版页面](https://github.com/GuHong-zyx/Zotero-Smart-Paste/releases)，下载 `Zotero-Smart-Paste-v1.0.2.zip` 并解压到固定位置。
+1. 前往[发行版页面](https://github.com/GuHong-zyx/Zotero-Smart-Paste/releases)，下载 `Zotero-Smart-Paste-v1.0.3.zip` 并解压到固定位置。
 2. 在 Edge 打开 `edge://extensions`，开启“开发人员模式”。Chrome 对应页面为 `chrome://extensions`。
 3. 点击“加载解压缩的扩展”，选择解压后的 **extension** 文件夹。该文件夹内应有 `manifest.json`。
 
@@ -28,7 +28,7 @@
 
 用新版 `extension` 文件夹内的文件覆盖原安装目录，在扩展管理页点击“重新加载”。浏览器可能保留旧快捷键，请到 `edge://extensions/shortcuts` 将“复制选区到 Zotero”改为 **Ctrl＋Shift＋Z**。也可以移除旧版后重新加载新版。
 
-v1.0.2 修复网页布局容器把行内公式拆成新段落的问题，并清理空段落和块间缩进空白。保留列表类型、层级、起始编号及真实代码空行。已经粘贴的错误断段不会自动重排，需要重新复制相应内容。
+v1.0.3 直接处理选区节点，修复 AI Studio 用 PRE／CODE 包裹行内公式时产生的额外断段，也保留加粗文字中的公式。继续清理空段落和块间缩进空白。保留列表类型、层级、起始编号及真实代码空行。已经粘贴的错误断段不会自动重排，需要重新复制相应内容。
 
 如果有序列表中的无序子列表仍显示为数字，或段距仍偏大，请检查 Zotero 的自定义笔记样式。列表规则应区分直接子项，例如使用 `ol > li`；扩展不会覆盖 Zotero 的全局字体、配色和段距。
 
