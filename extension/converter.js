@@ -5575,6 +5575,27 @@ var ZoteroPaste = (() => {
       return null;
     }
   }
+  function cleanCodeContainer(target, doc) {
+    const result = doc.createDocumentFragment();
+    function appendCode(content) {
+      if (!content.textContent.replace(/[\s\u200b-\u200d\ufeff]/g, "")) return;
+      const code2 = target.cloneNode(false);
+      code2.append(content);
+      result.append(code2);
+    }
+    let formula;
+    while (formula = target.querySelector("span.math,pre.math")) {
+      const range = doc.createRange();
+      range.setStart(target, 0);
+      range.setEndBefore(formula);
+      appendCode(range.extractContents());
+      result.append(formula);
+    }
+    const remainder = doc.createDocumentFragment();
+    remainder.append(...target.childNodes);
+    appendCode(remainder);
+    return result;
+  }
   function cleanNode(node, doc, ctx, inCode = false) {
     if (node.nodeType === 3) return inCode ? doc.createTextNode(node.textContent) : splitText(node.textContent, doc);
     if (node.nodeType !== 1) return doc.createDocumentFragment();
@@ -5608,6 +5629,7 @@ var ZoteroPaste = (() => {
       for (const key of ["colspan", "rowspan"]) if (/^\d+$/.test(node.getAttribute(key) || "")) target.setAttribute(key, String(Math.min(100, Number(node.getAttribute(key)))));
     }
     for (const child of node.childNodes) target.append(cleanNode(child, doc, ctx, inCode || tag === "CODE" || tag === "PRE"));
+    if (tag === "PRE" || tag === "CODE") return cleanCodeContainer(target, doc);
     return target;
   }
   function liftDisplay(root) {
@@ -5769,7 +5791,7 @@ var ZoteroPaste = (() => {
     outline.style.cssText = "position:fixed;pointer-events:none;border:2px solid #087f68;border-radius:8px;background:#087f6812;z-index:2147483646;";
     document.documentElement.append(outline);
     let current = null;
-    toast("\u70B9\u51FB\u8981\u590D\u5236\u7684\u56DE\u7B54\uFF1BEsc \u53D6\u6D88\u3002\n\u4E5F\u53EF\u4EE5\u5148\u9009\u4E2D\u6587\u5B57\uFF0C\u518D\u6309 Alt+Shift+Z\u3002");
+    toast("\u70B9\u51FB\u8981\u590D\u5236\u7684\u56DE\u7B54\uFF1BEsc \u53D6\u6D88\u3002\n\u4E5F\u53EF\u4EE5\u5148\u9009\u4E2D\u6587\u5B57\uFF0C\u518D\u6309 Ctrl+Shift+Z\u3002");
     function candidate(target) {
       if (!(target instanceof Element) || target.closest("#zp-toast")) return null;
       const turn = target.closest('ms-chat-turn,ms-model-response,[data-message-author-role="assistant"]');

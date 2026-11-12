@@ -90,6 +90,24 @@ function safeHref(value,base) {
   if(!value) return null;
   try {const u=new URL(value,base||'https://invalid.local'); return /^(https?:|mailto:|zotero:)$/.test(u.protocol)?u.href:null;} catch{return null;}
 }
+function cleanCodeContainer(target,doc) {
+  // A rendered formula can sit inside AI Studio's PRE/CODE wrappers. Passing
+  // those through makes Zotero create an empty codeBlock before the formula.
+  const result=doc.createDocumentFragment();
+  function appendCode(content) {
+    if(!content.textContent.replace(/[\s\u200b-\u200d\ufeff]/g,'')) return;
+    const code=target.cloneNode(false);code.append(content);result.append(code);
+  }
+  let formula;
+  while((formula=target.querySelector('span.math,pre.math'))) {
+    const range=doc.createRange();range.setStart(target,0);range.setEndBefore(formula);
+    appendCode(range.extractContents());
+    result.append(formula);
+  }
+  const remainder=doc.createDocumentFragment();remainder.append(...target.childNodes);
+  appendCode(remainder);
+  return result;
+}
 function cleanNode(node,doc,ctx,inCode=false) {
   if(node.nodeType===3) return inCode?doc.createTextNode(node.textContent):splitText(node.textContent,doc);
   if(node.nodeType!==1) return doc.createDocumentFragment();
@@ -115,6 +133,7 @@ function cleanNode(node,doc,ctx,inCode=false) {
   if(tag==='OL' && /^\d+$/.test(node.getAttribute('start')||'')) target.setAttribute('start',node.getAttribute('start'));
   if(tag==='TD'||tag==='TH') for(const key of ['colspan','rowspan']) if(/^\d+$/.test(node.getAttribute(key)||'')) target.setAttribute(key,String(Math.min(100,Number(node.getAttribute(key)))));
   for(const child of node.childNodes) target.append(cleanNode(child,doc,ctx,inCode||tag==='CODE'||tag==='PRE'));
+  if(tag==='PRE'||tag==='CODE') return cleanCodeContainer(target,doc);
   return target;
 }
 function liftDisplay(root) {
@@ -221,7 +240,7 @@ export function pickAnswer() {
   window.__zpCancelPicker?.();
   const outline=document.createElement('div');outline.style.cssText='position:fixed;pointer-events:none;border:2px solid #087f68;border-radius:8px;background:#087f6812;z-index:2147483646;';
   document.documentElement.append(outline); let current=null;
-  toast('点击要复制的回答；Esc 取消。\n也可以先选中文字，再按 Alt+Shift+Z。');
+  toast('点击要复制的回答；Esc 取消。\n也可以先选中文字，再按 Ctrl+Shift+Z。');
   function candidate(target) {
     if(!(target instanceof Element) || target.closest('#zp-toast')) return null;
     const turn=target.closest('ms-chat-turn,ms-model-response,[data-message-author-role="assistant"]');

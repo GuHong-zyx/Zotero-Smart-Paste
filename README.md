@@ -2,11 +2,11 @@
 
 将 AI Studio 中的选中文字或单条回答复制为 Zotero 笔记，保留可编辑公式、标题、列表、表格和代码。转换在本地完成，无需 API 密钥。
 
-当前版本：**v1.0.0**。本项目借助 AI 开发和整理发行说明，采用 MIT 许可证。
+当前版本：**v1.0.1**。本项目借助 AI 开发和整理发行说明，采用 MIT 许可证。
 
 ## 下载安装
 
-1. 前往[发行版页面](https://github.com/GuHong-zyx/Zotero-Smart-Paste/releases)，下载 `Zotero-Smart-Paste-v1.0.0.zip` 并解压到固定位置。
+1. 前往[发行版页面](https://github.com/GuHong-zyx/Zotero-Smart-Paste/releases)，下载 `Zotero-Smart-Paste-v1.0.1.zip` 并解压到固定位置。
 2. 在 Edge 打开 `edge://extensions`，开启“开发人员模式”。Chrome 对应页面为 `chrome://extensions`。
 3. 点击“加载解压缩的扩展”，选择解压后的 **extension** 文件夹。该文件夹内应有 `manifest.json`。
 
@@ -14,15 +14,21 @@
 
 ## 使用
 
-1. 在 AI Studio 回答正文中选中所需内容，按 **Alt＋Shift＋Z**；也可以右键选择“复制选区到 Zotero（保留公式）”。
+1. 在 AI Studio 回答正文中选中所需内容，按 **Ctrl＋Shift＋Z**；也可以右键选择“复制选区到 Zotero（保留公式）”。
 2. 切换到 Zotero 的普通笔记正文，按 **Ctrl＋V** 粘贴。请勿使用“粘贴为纯文本”，也不要先进入公式编辑框。
 3. 复制整条回答时，点击浏览器工具栏的扩展图标，选择“点选一条回答”，确认绿色框覆盖目标后点击；按 Esc 取消。
 
-快捷键无效时，打开 `edge://extensions/shortcuts`，检查“复制选区到 Zotero”的设置。当前默认组合键为 `Alt+Shift+Z`。
+快捷键无效时，打开 `edge://extensions/shortcuts`，检查“复制选区到 Zotero”的设置。当前默认组合键为 `Ctrl+Shift+Z`。
 
 ## 免安装转换页
 
 用 Edge 或 Chrome 打开 `extension/convert.html`，在左侧粘贴含 LaTeX 的 Markdown 或原网页富文本，检查右侧预览，点击“复制到 Zotero”，再到笔记正文粘贴。
+
+## 从 v1.0.0 升级
+
+用新版 `extension` 文件夹内的文件覆盖原安装目录，在扩展管理页点击“重新加载”。浏览器可能保留旧快捷键，请到 `edge://extensions/shortcuts` 将“复制选区到 Zotero”改为 **Ctrl＋Shift＋Z**。也可以移除旧版后重新加载新版。
+
+本版修复公式外层空代码块导致的宽横条。旧笔记中已有的横条不会自动消失，需要重新复制相应内容。
 
 ## 范围与权限
 

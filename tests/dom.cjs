@@ -21,6 +21,17 @@ $$
   ok(parsed.html.includes('pre class="math"')&&parsed.html.includes('span class="math"'),'official schema serialization roundtrip');
   r=convert(String.raw`$$ $x_{i}^{2}$ $$`);ok(r.display===1&&!r.html.includes('$$$')&&r.html.includes('$$x_{i}^{2}$$'),'nested display/inline dollars repaired');
   r=convert('```python\nx = "$x$"\n```\n\n`$price$`\n\n```math\n\\sum_j x_j\n```');ok(r.inline===0&&r.display===1&&r.html.includes('x = "$x$"'),'real code remains code');
+  r=html('<p>前文</p><pre><code>\n \u200b</code></pre><p>后文</p>');ok(!r.html.includes('<pre')&&!JSON.stringify(w.verifyZoteroHTML(r.html).json).includes('codeBlock'),'blank code containers do not become wide bars');
+  r=html('<pre><code><span class="katex-display"><span class="katex"><annotation encoding="application/x-tex">x^2</annotation></span></span></code></pre>');
+  let wrappedMath=w.verifyZoteroHTML(r.html).json;
+  ok(r.html==='<pre class="math">$$x^2$$</pre>'&&wrappedMath.content.length===1&&wrappedMath.content[0].type==='math_display','display formula wrappers produce no phantom codeBlock');
+  r=html('<pre><code><span class="katex"><annotation encoding="application/x-tex">X_t</annotation></span></code></pre>');
+  wrappedMath=w.verifyZoteroHTML(r.html).json;
+  ok(r.html==='<span class="math">$X_t$</span>'&&!JSON.stringify(wrappedMath).includes('codeBlock')&&!JSON.stringify(wrappedMath).includes('"type":"code"'),'inline formula wrappers produce no codeBlock or code mark');
+  r=html('<pre><code>before = 1\n<span class="katex-display"><span class="katex"><annotation encoding="application/x-tex">y^2</annotation></span></span>\nafter = 2</code></pre>');
+  wrappedMath=w.verifyZoteroHTML(r.html).json;
+  ok(wrappedMath.content.map(x=>x.type).join(',')==='codeBlock,math_display,codeBlock'&&wrappedMath.content[0].content[0].text.includes('before = 1')&&wrappedMath.content[2].content[0].text.includes('after = 2'),'mixed code/formula wrappers retain real code on both sides');
+  r=html('<p>前文</p><hr><p>后文</p>');ok(r.html.includes('<hr>'),'intentional horizontal rule remains intact');
   r=convert('价格为 $5 和 $10，区间 $5–$10。');ok(r.inline===0,'currency ranges remain text');
   r=html('<p>正文 <span class="katex"><span class="katex-mathml"><math><semantics><mi>C</mi><annotation encoding="application/x-tex">C_{n,t}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true">Cn,t</span></span>。</p><span class="katex-display"><span class="katex"><annotation encoding="application/x-tex">\\sum_j x_j</annotation><span class="katex-html">Σjxj</span></span></span>');
   ok(r.inline===1&&r.display===1&&!r.html.includes('katex')&&!r.html.includes('Cn,t'),'KaTeX duplicate layers collapse into one formula');
