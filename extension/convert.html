@@ -1,0 +1,7 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Zotero 公式粘贴转换</title><link rel="stylesheet" href="ui.css"><link rel="stylesheet" href="vendor/katex.min.css"></head><body>
+<main class="workspace"><div class="eyebrow">ZOTERO SMART PASTE / LOCAL CONVERTER</div><h1>让公式回到笔记里。</h1><p>在左侧粘贴 AI Studio 复制的内容，或粘贴包含 LaTeX 的 Markdown。转换在本地完成。</p>
+<div class="toolbar"><button id="copy" class="primary">复制到 Zotero</button><button id="demo">载入示例</button><button id="clear">清空</button></div>
+<div id="message" class="notice" role="status">支持 $…$、$$…$$、\(…\)、\[…\]，自动去除公式外层重复分隔符。</div>
+<div class="columns"><section class="panel"><h2>粘贴内容 / Markdown</h2><textarea id="source" aria-label="待转换内容" placeholder="在这里按 Ctrl+V…" spellcheck="false"></textarea></section><section class="panel"><h2>效果预览</h2><div id="preview" class="preview"></div></section></div>
+<p class="hint" style="margin-top:18px">转换后请在 Zotero 普通笔记正文使用 Ctrl+V。已有内容若已丢失 LaTeX 源码，工具无法恢复上下标；请回到原网页选中文字复制。图片不包含在复制结果中。</p>
+</main><script src="converter.js"></script><script src="vendor/katex.min.js"></script><script src="convert.js"></script></body></html>

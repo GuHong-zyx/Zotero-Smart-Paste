@@ -1,0 +1,29 @@
+{
+  "name": "zotero-smart-paste",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.cjs",
+    "test": "node tests/dom.cjs",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "dependencies": {
+    "markdown-it": "14.1.0",
+    "katex": "0.16.22"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "jsdom": "26.1.0",
+    "playwright": "1.62.1",
+    "prosemirror-model": "1.25.2",
+    "prosemirror-tables": "1.7.1",
+    "prosemirror-state": "1.4.3",
+    "prosemirror-view": "1.40.1"
+  },
+  "description": "将 AI Studio 中的内容转换为 Zotero 可编辑笔记，保留公式与基本排版。",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GuHong-zyx/Zotero-Smart-Paste.git"
+  }
+}
